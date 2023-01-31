@@ -27,6 +27,10 @@ import jenkins.tasks.SimpleBuildStep;
 import org.jenkinsci.Symbol;
 import hudson.util.Secret;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 
 /**
  * This is the builder class.
@@ -263,8 +267,41 @@ public class AquaDockerScannerBuilder extends Builder implements SimpleBuildStep
 				showNegligible, onDisallowed == null || !onDisallowed.equals("fail"), notCompliesCmd, caCertificates,
 				policies, localTokenSecret, customFlags, tarFilePath, containerRuntime, scannerPath);
 		build.addAction(new AquaScannerAction(build, artifactSuffix, artifactName));
+		
 
 		archiveArtifacts(build, workspace, launcher, listener);
+		FilePath jsontarget = new FilePath(workspace, "jsonout.json");
+		listener.getLogger().println("json target file");
+			// listener.getLogger().println(target.readToString());
+			listener.getLogger().println(jsontarget.isRemote());
+			listener.getLogger().println("done");
+		listener.getLogger().println("printing file in workspace");
+		// FilePath jsonFilePath = new FilePath(new File("/var/jenkins_home/jobs/ank-sample-1/builds/205/jsonout.json"));
+		try {
+			listener.getLogger().println("try");
+			listener.getLogger().println(jsontarget.getRemote()+ jsontarget.readToString());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			listener.getLogger().println("catch");
+			listener.getLogger().println(e.toString()+" "+e.getMessage());
+			e.printStackTrace();
+		}
+		listener.getLogger().print("printed successfully");
+		listener.getLogger().println("new code after artifacts");
+		//Path path = Paths.get(build.getRootDir().getAbsolutePath()+"/jsonout.json");
+		Path path = Paths.get("/var/jenkins_home/jobs/ank-sample-1/builds/205/jsonout.json");
+		try {
+
+			// size of a file (in bytes)
+			long bytes = Files.size(path);
+			listener.getLogger().println("IN TRY");
+			listener.getLogger().println(bytes);
+			listener.getLogger().println(String.format("%,d kilobytes", bytes / 1024));
+
+		} catch (Exception e) {
+			listener.getLogger().println(e.toString()+e.getMessage());
+			e.printStackTrace();
+		}
 
 		listener.getLogger().println("exitCode: " + exitCode);
 		String failedMessage = "Scanning failed.";
@@ -293,6 +330,13 @@ public class AquaDockerScannerBuilder extends Builder implements SimpleBuildStep
 		}
 		try {
 			ArtifactArchiver styleArtifactArchiver = new ArtifactArchiver("styles.css");
+			styleArtifactArchiver.perform(build, workspace, launcher, listener);
+		} catch (Exception e) {
+			throw new InterruptedException(
+					"Failed to setup build results due to an unexpected error. Please refer to above logs for more information");
+		}
+		try {
+			ArtifactArchiver styleArtifactArchiver = new ArtifactArchiver("jsonout.json");
 			styleArtifactArchiver.perform(build, workspace, launcher, listener);
 		} catch (Exception e) {
 			throw new InterruptedException(
