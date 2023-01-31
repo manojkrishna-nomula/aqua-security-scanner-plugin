@@ -13,7 +13,9 @@ import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.util.Secret;
 import jenkins.model.Jenkins;
+import scala.collection.immutable.List;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -64,12 +66,14 @@ public class ScannerExecuter {
 			buildJobName = buildJobName.replaceAll("\\s+", "");
 			String buildUrl = env.get("BUILD_URL");
 			String buildNumber = env.get("BUILD_NUMBER");
+			String mountPath = workspace.getRemote()+":/home/ubuntu";
+			listener.getLogger().println(mountPath);
 			args.addTokenized("-e BUILD_JOB_NAME="+buildJobName+" -e BUILD_URL="+buildUrl+" -e BUILD_NUMBER="+buildNumber);
 			switch (locationType) {
 			case "hosted":
 				args.addTokenized(runOptions);
 
-				args.add("--rm", "-v", "/var/run/docker.sock:/var/run/docker.sock", aquaScannerImage, "scan",
+				args.add("--rm", "-v", "/var/run/docker.sock:/var/run/docker.sock","-v",mountPath, aquaScannerImage, "scan",
 					"--host", apiURL, "--registry", registry,
 						hostedImage);				
 
@@ -147,7 +151,10 @@ public class ScannerExecuter {
 			}
 
 			args.add("--html");
-
+			args.add("--jsonfile", "/home/ubuntu/jsonout.json");
+			
+			
+			
 			
 			if (!isDocker){
 				args.add("--image-name", localImage);
@@ -171,6 +178,13 @@ public class ScannerExecuter {
 			FilePath target = new FilePath(workspace, artifactName);
 			FilePath outFilePath = new FilePath(outFile);
 			outFilePath.copyTo(target);
+			listener.getLogger().println("html target file");
+			// listener.getLogger().println(target.readToString());
+			listener.getLogger().println(target.isRemote());
+			listener.getLogger().println("done");
+			
+			// listener.getLogger().println(JsonFile.length());
+			// jsonFilePath.copyTo(jsontarget);
 
 			//css
 			File cssFile;
@@ -196,7 +210,26 @@ public class ScannerExecuter {
 				ps.join(); // RUN !
 
 			}
+			
+			// listener.getLogger().println(JsonFile.length());
+			// jsonFilePath.copyTo(jsontarget);
+			// listener.getLogger().println("fileName "+build.getRootDir().getAbsolutePath()+"/jsonout.json");
+			
+			// Path path = Paths.get(build.getRootDir().getAbsolutePath()+"/jsonout.json");
 
+			// try {
+
+			// 	// size of a file (in bytes)
+			// 	long bytes = Files.size(path);
+			// 	listener.getLogger().println("IN TRY");
+			// 	listener.getLogger().println(bytes);
+			// 	listener.getLogger().println(String.format("%,d kilobytes", bytes / 1024));
+
+			// } catch (Exception e) {
+			// 	listener.getLogger().println(e.toString()+e.getMessage());
+			// 	e.printStackTrace();
+			// }
+			// jsonFilePath.copyTo(jsontarget);
 			return exitCode;
 
 		} catch (RuntimeException e) {
@@ -222,6 +255,7 @@ public class ScannerExecuter {
 		}
 		listener.getLogger().println(scanOutput.substring(0,htmlStart));
 		int htmlEnd = scanOutput.lastIndexOf("</html>") + 7;
+		listener.getLogger().println(scanOutput.substring(htmlEnd+1, scanOutput.length()));
 		scanOutput = scanOutput.substring(htmlStart,htmlEnd);
 		String scanRegex = "(?m)\\d{4}\\-(0?[1-9]|1[012])\\-(0?[1-9]|[12][0-9]|3[01]).*";
 		scanOutput = scanOutput.replaceAll(scanRegex, "");
